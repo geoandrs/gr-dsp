@@ -25,8 +25,6 @@ from PyQt5 import Qt
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
-from gnuradio import uhd
-import time
 import sip
 
 
@@ -69,6 +67,7 @@ class default(gr.top_block, Qt.QWidget):
         self.tx_gain = tx_gain = 40
         self.samp_rate = samp_rate = 1.024e6
         self.qpsk = qpsk = [-1-1j,-1+1j,1+1j,1-1j]
+        self.packet_len = packet_len = 0
         self.fc = fc = 915e6
         self.alpha = alpha = 0.5
 
@@ -76,6 +75,13 @@ class default(gr.top_block, Qt.QWidget):
         # Blocks
         ##################################################
 
+        self._alpha_range = qtgui.Range(0, 1, 0.05, 0.5, 200)
+        self._alpha_win = qtgui.RangeWidget(self._alpha_range, self.set_alpha, "'alpha'", "counter_slider", float, QtCore.Qt.Horizontal)
+        self.top_grid_layout.addWidget(self._alpha_win, 3, 0, 1, 2)
+        for r in range(3, 4):
+            self.top_grid_layout.setRowStretch(r, 1)
+        for c in range(0, 2):
+            self.top_grid_layout.setColumnStretch(c, 1)
         self._tx_gain_range = qtgui.Range(0, 90, 1, 40, 200)
         self._tx_gain_win = qtgui.RangeWidget(self._tx_gain_range, self.set_tx_gain, "'tx_gain'", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_grid_layout.addWidget(self._tx_gain_win, 2, 0, 1, 2)
@@ -83,28 +89,6 @@ class default(gr.top_block, Qt.QWidget):
             self.top_grid_layout.setRowStretch(r, 1)
         for c in range(0, 2):
             self.top_grid_layout.setColumnStretch(c, 1)
-        self._alpha_range = qtgui.Range(0, 1, 0.1, 0.5, 200)
-        self._alpha_win = qtgui.RangeWidget(self._alpha_range, self.set_alpha, "'alpha'", "counter_slider", float, QtCore.Qt.Horizontal)
-        self.top_grid_layout.addWidget(self._alpha_win, 3, 0, 1, 2)
-        for r in range(3, 4):
-            self.top_grid_layout.setRowStretch(r, 1)
-        for c in range(0, 2):
-            self.top_grid_layout.setColumnStretch(c, 1)
-        self.uhd_usrp_sink_0 = uhd.usrp_sink(
-            ",".join(("", '')),
-            uhd.stream_args(
-                cpu_format="fc32",
-                args='',
-                channels=list(range(0,1)),
-            ),
-            "",
-        )
-        self.uhd_usrp_sink_0.set_samp_rate(samp_rate)
-        self.uhd_usrp_sink_0.set_time_unknown_pps(uhd.time_spec(0))
-
-        self.uhd_usrp_sink_0.set_center_freq(fc, 0)
-        self.uhd_usrp_sink_0.set_antenna("TX/RX", 0)
-        self.uhd_usrp_sink_0.set_gain(tx_gain, 0)
         self.root_raised_cosine_filter_0_1 = filter.interp_fir_filter_ccf(
             32,
             firdes.root_raised_cosine(
@@ -259,19 +243,28 @@ class default(gr.top_block, Qt.QWidget):
             self.top_grid_layout.setRowStretch(r, 1)
         for c in range(0, 2):
             self.top_grid_layout.setColumnStretch(c, 1)
+        self.digital_chunks_to_symbols_xx_0_0 = digital.chunks_to_symbols_ic(qpsk, 1)
         self.digital_chunks_to_symbols_xx_0 = digital.chunks_to_symbols_ic(qpsk, 1)
+        self.blocks_vector_source_x_0 = blocks.vector_source_i((0,1,2,3,2)*2, True, 1, [])
+        self.blocks_tagged_stream_mux_0 = blocks.tagged_stream_mux(gr.sizeof_gr_complex*1, "packet_len", 0)
+        self.blocks_stream_to_tagged_stream_0_0 = blocks.stream_to_tagged_stream(gr.sizeof_int, 1, 10, "packet_len")
+        self.blocks_stream_to_tagged_stream_0 = blocks.stream_to_tagged_stream(gr.sizeof_int, 1, 90, "packet_len")
         self.analog_random_source_x_0 = blocks.vector_source_i(list(map(int, numpy.random.randint(0, 4, 1000000))), True)
 
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.analog_random_source_x_0, 0), (self.digital_chunks_to_symbols_xx_0, 0))
-        self.connect((self.digital_chunks_to_symbols_xx_0, 0), (self.qtgui_const_sink_x_0, 0))
-        self.connect((self.digital_chunks_to_symbols_xx_0, 0), (self.root_raised_cosine_filter_0_1, 0))
+        self.connect((self.analog_random_source_x_0, 0), (self.blocks_stream_to_tagged_stream_0, 0))
+        self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.digital_chunks_to_symbols_xx_0_0, 0))
+        self.connect((self.blocks_stream_to_tagged_stream_0_0, 0), (self.digital_chunks_to_symbols_xx_0, 0))
+        self.connect((self.blocks_tagged_stream_mux_0, 0), (self.qtgui_const_sink_x_0, 0))
+        self.connect((self.blocks_tagged_stream_mux_0, 0), (self.root_raised_cosine_filter_0_1, 0))
+        self.connect((self.blocks_vector_source_x_0, 0), (self.blocks_stream_to_tagged_stream_0_0, 0))
+        self.connect((self.digital_chunks_to_symbols_xx_0, 0), (self.blocks_tagged_stream_mux_0, 0))
+        self.connect((self.digital_chunks_to_symbols_xx_0_0, 0), (self.blocks_tagged_stream_mux_0, 1))
         self.connect((self.root_raised_cosine_filter_0_1, 0), (self.qtgui_freq_sink_x_0_0_1, 0))
         self.connect((self.root_raised_cosine_filter_0_1, 0), (self.qtgui_time_sink_x_0, 0))
-        self.connect((self.root_raised_cosine_filter_0_1, 0), (self.uhd_usrp_sink_0, 0))
 
 
     def closeEvent(self, event):
@@ -287,7 +280,6 @@ class default(gr.top_block, Qt.QWidget):
 
     def set_tx_gain(self, tx_gain):
         self.tx_gain = tx_gain
-        self.uhd_usrp_sink_0.set_gain(self.tx_gain, 0)
 
     def get_samp_rate(self):
         return self.samp_rate
@@ -297,7 +289,6 @@ class default(gr.top_block, Qt.QWidget):
         self.qtgui_freq_sink_x_0_0_1.set_frequency_range(0, self.samp_rate)
         self.qtgui_time_sink_x_0.set_samp_rate(self.samp_rate)
         self.root_raised_cosine_filter_0_1.set_taps(firdes.root_raised_cosine(20, self.samp_rate, 32e3, self.alpha, 352))
-        self.uhd_usrp_sink_0.set_samp_rate(self.samp_rate)
 
     def get_qpsk(self):
         return self.qpsk
@@ -305,13 +296,19 @@ class default(gr.top_block, Qt.QWidget):
     def set_qpsk(self, qpsk):
         self.qpsk = qpsk
         self.digital_chunks_to_symbols_xx_0.set_symbol_table(self.qpsk)
+        self.digital_chunks_to_symbols_xx_0_0.set_symbol_table(self.qpsk)
+
+    def get_packet_len(self):
+        return self.packet_len
+
+    def set_packet_len(self, packet_len):
+        self.packet_len = packet_len
 
     def get_fc(self):
         return self.fc
 
     def set_fc(self, fc):
         self.fc = fc
-        self.uhd_usrp_sink_0.set_center_freq(self.fc, 0)
 
     def get_alpha(self):
         return self.alpha
