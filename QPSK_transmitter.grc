@@ -45,7 +45,7 @@ blocks:
     start: '0'
     step: '0.05'
     stop: '1'
-    value: '0.5'
+    value: '0.35'
     widget: counter_slider
   states:
     bus_sink: false
@@ -58,24 +58,36 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 915e6
+    value: 910e6
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [288, 12.0]
+    coordinate: [280, 4.0]
     rotation: 0
     state: true
 - name: packet_len
   id: variable
   parameters:
     comment: ''
-    value: '0'
+    value: '64'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [184, 84.0]
+    coordinate: [800, 12.0]
+    rotation: 0
+    state: enabled
+- name: preamble_len
+  id: variable
+  parameters:
+    comment: ''
+    value: '10'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [896, 12.0]
     rotation: 0
     state: enabled
 - name: qpsk
@@ -99,7 +111,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [184, 16.0]
+    coordinate: [184, 4.0]
     rotation: 0
     state: enabled
 - name: tx_gain
@@ -112,15 +124,15 @@ blocks:
     orient: QtCore.Qt.Horizontal
     rangeType: float
     start: '0'
-    step: '1'
-    stop: '90'
-    value: '40'
+    step: '0.02'
+    stop: '1'
+    value: '0.8'
     widget: counter_slider
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [384, 12.0]
+    coordinate: [368, 68.0]
     rotation: 0
     state: enabled
 - name: analog_random_source_x_0
@@ -152,7 +164,7 @@ blocks:
     len_tag_key: '"packet_len"'
     maxoutbuf: '0'
     minoutbuf: '0'
-    packet_len: '90'
+    packet_len: packet_len
     type: int
     vlen: '1'
   states:
@@ -171,7 +183,7 @@ blocks:
     len_tag_key: '"packet_len"'
     maxoutbuf: '0'
     minoutbuf: '0'
-    packet_len: '10'
+    packet_len: preamble_len
     type: int
     vlen: '1'
   states:
@@ -893,7 +905,7 @@ blocks:
     gain7: '0'
     gain8: '0'
     gain9: '0'
-    gain_type0: default
+    gain_type0: normalized
     gain_type1: default
     gain_type10: default
     gain_type11: default
@@ -1024,7 +1036,7 @@ blocks:
     bus_structure: null
     coordinate: [816, 596.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_sink_0
   id: virtual_sink
   parameters:
